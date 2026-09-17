@@ -46,7 +46,9 @@ header{
   text-decoration:none
 }
 
-.logo b{color:var(--a)}
+.logo b{
+  color:var(--a)
+}
 
 nav{
   display:flex;
@@ -60,7 +62,9 @@ nav a{
   font-weight:650
 }
 
-nav a:hover{color:#fff}
+nav a:hover{
+  color:#fff
+}
 
 .wrap{
   max-width:1400px;
@@ -84,6 +88,10 @@ h1{
   line-height:.95;
   letter-spacing:-3px;
   margin:12px 0 18px
+}
+
+h2{
+  margin-bottom:20px
 }
 
 .muted{
@@ -256,7 +264,9 @@ h1{
 
 @media(max-width:760px){
 
-  nav{display:none}
+  nav{
+    display:none
+  }
 
   .wrap{
     padding:0 4%
@@ -298,6 +308,7 @@ h1{
 <body>
 
 <header>
+
   <a class="logo" href="#/">OMN<b>EXA</b></a>
 
   <nav>
@@ -305,6 +316,7 @@ h1{
     <a href="#/buscar">Buscar</a>
     <a href="#/descubrir">Descubrir</a>
   </nav>
+
 </header>
 
 <main class="wrap" id="app"></main>
@@ -336,98 +348,264 @@ String(s ?? "")
 }[c]));
 
 
-const poster = x =>
-x?.poster_url ||
-x?.poster ||
-"https://placehold.co/500x750/11131a/ffffff?text=OMNEXA";
+const scalar = v => {
+
+  if(v == null)
+    return "";
+
+  if(typeof v === "string" || typeof v === "number")
+    return String(v);
+
+  if(typeof v === "object"){
+
+    return scalar(
+      v.title ??
+      v.name ??
+      v.original_title ??
+      v.original_name
+    );
+
+  }
+
+  return "";
+};
+
+
+const unwrap = x => {
+
+  if(!x || typeof x !== "object")
+    return {};
+
+  const nested =
+    x.title &&
+    typeof x.title === "object"
+      ? x.title
+      : null;
+
+  if(!nested)
+    return x;
+
+  return {
+
+    ...x,
+    ...nested,
+
+    id:
+      x.id ??
+      x.title_id ??
+      nested.id ??
+      "",
+
+    title:
+      scalar(
+        nested.title ??
+        nested.name ??
+        nested.original_title
+      ),
+
+    name:
+      scalar(
+        nested.name ??
+        nested.title ??
+        nested.original_title
+      ),
+
+    poster_url:
+      x.poster_url ??
+      nested.poster_url ??
+      "",
+
+    backdrop_url:
+      x.backdrop_url ??
+      nested.backdrop_url ??
+      "",
+
+    year:
+      x.year ??
+      nested.year ??
+      "",
+
+    release_date:
+      x.release_date ??
+      nested.release_date ??
+      "",
+
+    rating:
+      x.rating ??
+      nested.rating ??
+      "",
+
+    type:
+      x.type ??
+      nested.type ??
+      "",
+
+    synopsis:
+      x.synopsis ??
+      nested.synopsis ??
+      "",
+
+    match_score:
+      x.match_score ??
+      nested.match_score ??
+      null
+
+  };
+
+};
+
+
+const poster = x => {
+
+  const p =
+    x?.poster_url ||
+    x?.poster ||
+    "";
+
+  return p ||
+    "https://placehold.co/500x750/11131a/ffffff?text=OMNEXA";
+};
 
 
 /* =========================
-   API OMNEXA
+   API
 ========================= */
 
 async function api(action,x={}){
 
   const payload = {
+
     action,
+
     region:"DO",
+
     ...x
+
   };
 
-  const r = await fetch(API,{
-    method:"POST",
 
-    headers:{
-      "Content-Type":"application/json",
-      "apikey":PUBLIC_KEY,
-      "Authorization":"Bearer "+PUBLIC_KEY
-    },
+  const r =
+    await fetch(API,{
 
-    body:JSON.stringify(payload)
-  });
+      method:"POST",
+
+      headers:{
+
+        "Content-Type":
+          "application/json",
+
+        "apikey":
+          PUBLIC_KEY,
+
+        "Authorization":
+          "Bearer " + PUBLIC_KEY
+
+      },
+
+      body:
+        JSON.stringify(payload)
+
+    });
 
 
-  const text = await r.text();
+  const text =
+    await r.text();
 
-  let d={};
+
+  let d = {};
+
 
   try{
-    d = text ? JSON.parse(text) : {};
+
+    d =
+      text
+      ? JSON.parse(text)
+      : {};
+
   }catch{
+
     d = {
-      error:text || "Respuesta inválida del servidor"
+
+      error:
+        text ||
+        "Respuesta inválida del servidor"
+
     };
+
   }
 
 
   if(!r.ok){
 
     throw new Error(
-      d?.error ||
-      d?.message ||
+
+      scalar(d?.error) ||
+      scalar(d?.message) ||
       "Error OMNEXA"
+
     );
+
   }
 
+
   return d;
+
 }
 
 
 /* =========================
-   NORMALIZAR RESPUESTAS
+   RESULTADOS
 ========================= */
 
 function normalizeResults(d){
 
-  if(Array.isArray(d))
-    return d;
+  let a = [];
 
-  if(Array.isArray(d?.results))
-    return d.results;
+  if(Array.isArray(d)){
 
-  if(Array.isArray(d?.data))
-    return d.data;
+    a = d;
 
-  if(Array.isArray(d?.data?.results))
-    return d.data.results;
+  }else if(Array.isArray(d?.results)){
 
-  if(Array.isArray(d?.titles))
-    return d.titles;
+    a = d.results;
 
-  if(Array.isArray(d?.items))
-    return d.items;
+  }else if(Array.isArray(d?.data?.results)){
 
-  return [];
+    a = d.data.results;
+
+  }else if(Array.isArray(d?.data)){
+
+    a = d.data;
+
+  }else if(Array.isArray(d?.titles)){
+
+    a = d.titles;
+
+  }else if(Array.isArray(d?.items)){
+
+    a = d.items;
+
+  }else if(d?.title){
+
+    a = [d];
+
+  }
+
+  return a.map(unwrap);
+
 }
 
 
 function resultCount(d,a){
 
   return Number(
+
     d?.result_count ??
     d?.data?.result_count ??
     a.length
+
   ) || 0;
+
 }
 
 
@@ -437,48 +615,65 @@ function resultCount(d,a){
 
 function cards(a){
 
-  const arr = Array.isArray(a) ? a : [];
+  const arr =
+    Array.isArray(a)
+      ? a.map(unwrap)
+      : [];
+
 
   if(!arr.length){
 
     return `
+
       <div class="empty">
-        No encontramos títulos para mostrar.
+
+        No encontramos títulos
+        para mostrar.
+
       </div>
+
     `;
+
   }
 
 
   return `
+
     <div class="grid">
 
       ${arr.map(x=>{
 
         const id =
-          x.id ??
-          x.title_id ??
-          "";
-
-        const title =
-          x.title ??
-          x.name ??
-          "Sin título";
-
-        const year =
-          x.year ??
-          (
-            x.release_date
-            ? String(x.release_date).slice(0,4)
-            : ""
+          scalar(
+            x.id ??
+            x.title_id
           );
 
+
+        const title =
+          scalar(x.title) ||
+          scalar(x.name) ||
+          scalar(x.original_title) ||
+          "Sin título";
+
+
+        const year =
+          scalar(x.year) ||
+          (
+            x.release_date
+              ? String(x.release_date).slice(0,4)
+              : ""
+          );
+
+
         const rating =
-          x.rating ??
-          x.vote_average ??
-          "";
+          scalar(x.rating) ||
+          scalar(x.vote_average);
+
 
         const match =
           x.match_score;
+
 
         return `
 
@@ -496,20 +691,30 @@ function cards(a){
 
             <div class="cb">
 
-              <b>${esc(title)}</b>
+              <b>
+                ${esc(title)}
+              </b>
 
               <div class="meta">
 
                 ${esc(year)}
 
-                ${rating
-                  ? " · ⭐ "+esc(rating)
-                  : ""
+                ${
+                  rating
+                    ? " · ⭐ " +
+                      esc(rating)
+                    : ""
                 }
 
-                ${match
-                  ? " · "+Math.round(match*100)+"% Match"
-                  : ""
+                ${
+                  match != null &&
+                  !Number.isNaN(Number(match))
+                    ? " · " +
+                      Math.round(
+                        Number(match) * 100
+                      ) +
+                      "% Match"
+                    : ""
                 }
 
               </div>
@@ -523,7 +728,9 @@ function cards(a){
       }).join("")}
 
     </div>
+
   `;
+
 }
 
 
@@ -535,30 +742,41 @@ function form(q="",ai=false){
 
   return `
 
-    <form class="search" id="sf">
+    <form
+      class="search"
+      id="sf"
+    >
 
       <input
+
         name="q"
+
         value="${esc(q)}"
+
         autocomplete="off"
+
         placeholder="${
           ai
-          ? "Describe lo que quieres ver…"
-          : "Película, serie, anime, actor…"
+            ? "Describe lo que quieres ver…"
+            : "Película, serie, anime, actor…"
         }"
+
       >
 
       <button type="submit">
+
         ${
           ai
-          ? "✨ Buscar con IA"
-          : "Buscar"
+            ? "✨ Buscar con IA"
+            : "Buscar"
         }
+
       </button>
 
     </form>
 
   `;
+
 }
 
 
@@ -582,9 +800,12 @@ async function home(){
       </h1>
 
       <p class="muted">
+
         Películas, series y anime.
-        Descubre dónde verlo, qué tienes disponible
+        Descubre dónde verlo,
+        qué tienes disponible
         y qué ver después.
+
       </p>
 
       ${form()}
@@ -616,35 +837,48 @@ async function home(){
 
     </section>
 
-    <div id="out" class="loading">
+    <div
+      id="out"
+      class="loading"
+    >
       Cargando catálogo…
     </div>
 
   `;
 
 
-  document.getElementById("sf").onsubmit = e => {
+  document
+    .getElementById("sf")
+    .onsubmit = e => {
 
-    e.preventDefault();
+      e.preventDefault();
 
-    const q =
-      String(
-        new FormData(e.target).get("q") || ""
-      ).trim();
 
-    if(!q) return;
+      const q =
+        String(
+          new FormData(e.target)
+            .get("q") || ""
+        ).trim();
 
-    location.hash =
-      "#/buscar?q="+
-      encodeURIComponent(q);
 
-  };
+      if(!q)
+        return;
+
+
+      location.hash =
+        "#/buscar?q=" +
+        encodeURIComponent(q);
+
+    };
 
 
   try{
 
     const d =
-      await api("home_feed",{limit:12});
+      await api(
+        "home_feed",
+        {limit:12}
+      );
 
 
     const sections =
@@ -654,83 +888,118 @@ async function home(){
 
 
     const forYou =
-      sections?.for_you ??
-      [];
+      Array.isArray(sections?.for_you)
+        ? sections.for_you.map(unwrap)
+        : [];
+
 
     const free =
-      sections?.free ??
-      [];
+      Array.isArray(sections?.free)
+        ? sections.free.map(unwrap)
+        : [];
+
 
     const myServices =
-      sections?.my_services ??
-      [];
+      Array.isArray(sections?.my_services)
+        ? sections.my_services.map(unwrap)
+        : [];
 
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      ${
-        forYou.length
-        ? `
-          <section class="sec">
-            <h2>Para ti</h2>
-            ${cards(forYou)}
-          </section>
-        `
-        : ""
-      }
+        ${
+          forYou.length
+            ? `
 
+              <section class="sec">
 
-      ${
-        free.length
-        ? `
-          <section class="sec">
-            <h2>Gratis</h2>
-            ${cards(free)}
-          </section>
-        `
-        : ""
-      }
+                <h2>
+                  Para ti
+                </h2>
+
+                ${cards(forYou)}
+
+              </section>
+
+            `
+            : ""
+        }
 
 
-      ${
-        myServices.length
-        ? `
-          <section class="sec">
-            <h2>En tus servicios</h2>
-            ${cards(myServices)}
-          </section>
-        `
-        : ""
-      }
+        ${
+          free.length
+            ? `
+
+              <section class="sec">
+
+                <h2>
+                  Gratis
+                </h2>
+
+                ${cards(free)}
+
+              </section>
+
+            `
+            : ""
+        }
 
 
-      ${
-        !forYou.length &&
-        !free.length &&
-        !myServices.length
-        ? `
-          <div class="empty">
-            El catálogo está disponible,
-            pero todavía no hay contenido para mostrar
-            en esta sección.
-          </div>
-        `
-        : ""
-      }
+        ${
+          myServices.length
+            ? `
 
-    `;
+              <section class="sec">
+
+                <h2>
+                  En tus servicios
+                </h2>
+
+                ${cards(myServices)}
+
+              </section>
+
+            `
+            : ""
+        }
+
+
+        ${
+          !forYou.length &&
+          !free.length &&
+          !myServices.length
+
+            ? `
+
+              <div class="empty">
+
+                El catálogo está disponible,
+                pero todavía no hay contenido
+                para mostrar.
+
+              </div>
+
+            `
+            : ""
+        }
+
+      `;
 
   }catch(e){
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      <div class="err">
+        <div class="err">
 
-        ${esc(e.message)}
+          ${esc(e.message)}
 
-      </div>
+        </div>
 
-    `;
+      `;
 
   }
 
@@ -738,7 +1007,7 @@ async function home(){
 
 
 /* =========================
-   BUSQUEDA
+   BUSCAR
 ========================= */
 
 async function search(){
@@ -750,10 +1019,13 @@ async function search(){
 
 
   const q =
-    String(p.get("q") || "").trim();
+    String(
+      p.get("q") || ""
+    ).trim();
+
 
   const ai =
-    p.get("ai")==="1";
+    p.get("ai") === "1";
 
 
   app.innerHTML = `
@@ -761,11 +1033,13 @@ async function search(){
     <section class="hero">
 
       <div class="ey">
+
         ${
           ai
-          ? "OMNEXA AI"
-          : "BÚSQUEDA UNIVERSAL"
+            ? "OMNEXA AI"
+            : "BÚSQUEDA UNIVERSAL"
         }
+
       </div>
 
       <h1>
@@ -776,44 +1050,59 @@ async function search(){
 
     </section>
 
-    <div id="out" class="loading"></div>
+    <div
+      id="out"
+      class="loading"
+    >
+    </div>
 
   `;
 
 
-  document.getElementById("sf").onsubmit = e => {
+  document
+    .getElementById("sf")
+    .onsubmit = e => {
 
-    e.preventDefault();
-
-    const z =
-      String(
-        new FormData(e.target).get("q") || ""
-      ).trim();
+      e.preventDefault();
 
 
-    if(!z) return;
+      const z =
+        String(
+          new FormData(e.target)
+            .get("q") || ""
+        ).trim();
 
 
-    location.hash =
-      "#/buscar?q="+
-      encodeURIComponent(z)+
-      (ai ? "&ai=1" : "");
+      if(!z)
+        return;
 
-  };
+
+      location.hash =
+        "#/buscar?q=" +
+        encodeURIComponent(z) +
+        (ai ? "&ai=1" : "");
+
+    };
 
 
   if(!q){
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      <div class="empty">
-        Escribe un título, actor
-        o describe lo que quieres ver.
-      </div>
+        <div class="empty">
 
-    `;
+          Escribe un título,
+          actor o describe
+          lo que quieres ver.
+
+        </div>
+
+      `;
 
     return;
+
   }
 
 
@@ -821,13 +1110,19 @@ async function search(){
 
     const d =
       await api(
+
         ai
-        ? "ai_search"
-        : "search",
+          ? "ai_search"
+          : "search",
+
         {
+
           query:q,
+
           limit:30
+
         }
+
       );
 
 
@@ -835,30 +1130,34 @@ async function search(){
       normalizeResults(d);
 
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      <p class="muted">
+        <p class="muted">
 
-        ${resultCount(d,results)}
-        resultados
+          ${resultCount(d,results)}
+          resultados
 
-      </p>
+        </p>
 
-      ${cards(results)}
+        ${cards(results)}
 
-    `;
+      `;
 
   }catch(e){
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      <div class="err">
+        <div class="err">
 
-        ${esc(e.message)}
+          ${esc(e.message)}
 
-      </div>
+        </div>
 
-    `;
+      `;
 
   }
 
@@ -866,7 +1165,7 @@ async function search(){
 
 
 /* =========================
-   FICHA DEL TITULO
+   FICHA
 ========================= */
 
 async function detail(id){
@@ -874,7 +1173,9 @@ async function detail(id){
   app.innerHTML = `
 
     <div class="loading">
+
       Cargando ficha…
+
     </div>
 
   `;
@@ -884,17 +1185,22 @@ async function detail(id){
 
     const d =
       await api(
+
         "title",
+
         {
           title_id:id
         }
+
       );
 
 
     const t =
-      d?.title ??
-      d?.data?.title ??
-      d;
+      unwrap(
+        d?.title ??
+        d?.data?.title ??
+        d
+      );
 
 
     const offers =
@@ -906,21 +1212,24 @@ async function detail(id){
 
 
     const title =
-      t?.title ??
+      scalar(t?.title) ||
+      scalar(t?.name) ||
       "Sin título";
 
 
     const type =
-      t?.type ??
+      scalar(t?.type) ||
       "TÍTULO";
 
 
     const year =
-      t?.year ??
+      scalar(t?.year) ||
       (
         t?.release_date
-        ? String(t.release_date).slice(0,4)
-        : ""
+          ? String(
+              t.release_date
+            ).slice(0,4)
+          : ""
       );
 
 
@@ -942,12 +1251,16 @@ async function detail(id){
         <div>
 
           <div class="ey">
+
             ${esc(type)}
+
           </div>
 
 
           <h1>
+
             ${esc(title)}
+
           </h1>
 
 
@@ -957,8 +1270,9 @@ async function detail(id){
 
             ${
               t?.rating
-              ? " · ⭐ "+esc(t.rating)
-              : ""
+                ? " · ⭐ " +
+                  esc(t.rating)
+                : ""
             }
 
           </div>
@@ -980,66 +1294,76 @@ async function detail(id){
 
 
           ${
+            Array.isArray(offers) &&
             offers.length
 
-            ?
+              ?
 
-            offers.map(x=>`
+              offers.map(x=>`
 
-              <div class="offer">
+                <div class="offer">
 
-                <span>
+                  <span>
 
-                  <b>
-                    ${esc(
-                      x.provider_name ||
-                      x.provider ||
-                      "Servicio"
-                    )}
-                  </b>
+                    <b>
 
-                  <br>
+                      ${esc(
+                        scalar(
+                          x.provider_name ??
+                          x.provider
+                        ) ||
+                        "Servicio"
+                      )}
 
-                  <small class="muted">
+                    </b>
 
-                    ${esc(
-                      x.offer_type ||
-                      ""
-                    )}
+                    <br>
 
-                  </small>
+                    <small class="muted">
 
-                </span>
+                      ${esc(
+                        scalar(
+                          x.offer_type
+                        )
+                      )}
+
+                    </small>
+
+                  </span>
 
 
-                <a
-                  target="_blank"
-                  rel="noopener"
-                  href="${esc(
-                    x.deeplink ||
-                    x.url ||
-                    "#"
-                  )}"
-                >
-                  Ver
-                </a>
+                  <a
 
-              </div>
+                    target="_blank"
 
-            `).join("")
+                    rel="noopener"
 
-            :
+                    href="${esc(
+                      x.deeplink ||
+                      x.url ||
+                      "#"
+                    )}"
 
-            `
+                  >
+                    Ver
+                  </a>
 
-              <div class="empty">
+                </div>
 
-                Sin disponibilidad
-                registrada en RD.
+              `).join("")
 
-              </div>
+              :
 
-            `
+              `
+
+                <div class="empty">
+
+                  Sin disponibilidad
+                  registrada en RD.
+
+                </div>
+
+              `
 
           }
 
@@ -1085,13 +1409,18 @@ async function discover(){
       </h1>
 
       <p class="muted">
+
         Catálogo disponible para
         República Dominicana.
+
       </p>
 
     </section>
 
-    <div id="out" class="loading">
+    <div
+      id="out"
+      class="loading"
+    >
       Cargando…
     </div>
 
@@ -1102,10 +1431,13 @@ async function discover(){
 
     const d =
       await api(
+
         "discover",
+
         {
           limit:40
         }
+
       );
 
 
@@ -1113,21 +1445,25 @@ async function discover(){
       normalizeResults(d);
 
 
-    document.getElementById("out").innerHTML =
-      cards(results);
+    document
+      .getElementById("out")
+      .innerHTML =
+        cards(results);
 
 
   }catch(e){
 
-    document.getElementById("out").innerHTML = `
+    document
+      .getElementById("out")
+      .innerHTML = `
 
-      <div class="err">
+        <div class="err">
 
-        ${esc(e.message)}
+          ${esc(e.message)}
 
-      </div>
+        </div>
 
-    `;
+      `;
 
   }
 
@@ -1147,9 +1483,11 @@ function route(){
   if(h.startsWith("#/title/")){
 
     return detail(
+
       decodeURIComponent(
-        h.split("/")[2]
+        h.split("/")[2] || ""
       )
+
     );
 
   }
