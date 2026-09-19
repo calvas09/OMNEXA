@@ -562,36 +562,63 @@ function normalizeResults(d){
   let a = [];
 
   if(Array.isArray(d)){
-
     a = d;
 
   }else if(Array.isArray(d?.results)){
-
     a = d.results;
 
   }else if(Array.isArray(d?.data?.results)){
-
     a = d.data.results;
 
   }else if(Array.isArray(d?.data)){
-
     a = d.data;
 
   }else if(Array.isArray(d?.titles)){
-
     a = d.titles;
 
   }else if(Array.isArray(d?.items)){
-
     a = d.items;
 
+  }else if(Array.isArray(d?.search_omnexa)){
+    a = d.search_omnexa;
+
+  }else if(Array.isArray(d?.run_omnexa_ai_search)){
+    a = d.run_omnexa_ai_search;
+
+  }else if(Array.isArray(d?.result)){
+    a = d.result;
+
+  }else if(Array.isArray(d?.data?.search_omnexa)){
+    a = d.data.search_omnexa;
+
+  }else if(Array.isArray(d?.data?.run_omnexa_ai_search)){
+    a = d.data.run_omnexa_ai_search;
+
+  }else if(Array.isArray(d?.data?.result)){
+    a = d.data.result;
+
+  }else if(d?.result && typeof d.result === "object"){
+    a = Array.isArray(d.result.results)
+      ? d.result.results
+      : [d.result];
+
+  }else if(d?.search_omnexa && typeof d.search_omnexa === "object"){
+    a = Array.isArray(d.search_omnexa.results)
+      ? d.search_omnexa.results
+      : [d.search_omnexa];
+
+  }else if(d?.run_omnexa_ai_search && typeof d.run_omnexa_ai_search === "object"){
+    a = Array.isArray(d.run_omnexa_ai_search.results)
+      ? d.run_omnexa_ai_search.results
+      : [d.run_omnexa_ai_search];
+
   }else if(d?.title){
-
     a = [d];
-
   }
 
-  return a.map(unwrap);
+  return a
+    .filter(x => x != null)
+    .map(unwrap);
 
 }
 
